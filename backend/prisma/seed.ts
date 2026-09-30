@@ -1,24 +1,46 @@
 import { PrismaClient } from "@prisma/client";
+import { PrismaNeon } from "@prisma/adapter-neon";
 import bcrypt from "bcryptjs";
 
-const prisma = new PrismaClient();
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  throw new Error("DATABASE_URL is required to seed PostgreSQL");
+}
 
-const BREWTL_SLUG = "brewtl";
+const prisma = new PrismaClient({
+  adapter: new PrismaNeon({ connectionString }),
+});
+
+const BRAND_SLUG = "brewtl";
+const LEGACY_SLUG = "DelhiDarbar";
 const PIZZA_SLUG = "pizza-palace";
-const BREWTL_TABLES = 12;
+const BRAND_TABLES = 12;
 
 async function main() {
-  console.log("Seeding BREWTL demo data (insert-only, safe for shared databases)...");
+  console.log("Seeding Brewtl demo data (insert-only, safe for shared databases)...");
 
   const passwordHash = await bcrypt.hash("password123", 10);
 
-  const brewtl = await prisma.restaurant.upsert({
-    where: { slug: BREWTL_SLUG },
-    update: {},
+  // Rebrand any legacy restaurant row so existing data keeps working.
+  const legacy = await prisma.restaurant.findUnique({ where: { slug: LEGACY_SLUG } });
+  if (legacy) {
+    const existingBrewtl = await prisma.restaurant.findUnique({ where: { slug: BRAND_SLUG } });
+    if (!existingBrewtl) {
+      await prisma.restaurant.update({
+        where: { id: legacy.id },
+        data: { slug: BRAND_SLUG, name: "Brewtl", logo: "/logo.png" },
+      });
+      console.log("Migrated legacy DelhiDarbar restaurant slug → brewtl");
+    }
+  }
+
+  const brand = await prisma.restaurant.upsert({
+    where: { slug: BRAND_SLUG },
+    update: { name: "Brewtl", logo: "/logo.png" },
     create: {
-      name: "BREWTL",
-      slug: BREWTL_SLUG,
-      logo: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=200&h=200&fit=crop",
+      name: "Brewtl",
+      slug: BRAND_SLUG,
+      logo: "/logo.png",
       coverImage:
         "https://images.unsplash.com/photo-1558030006-450675393462?w=1400&h=700&fit=crop",
       description: "Delicious food, great mood! Explore our chef's special dishes made just for you.",
@@ -42,21 +64,39 @@ async function main() {
     },
   });
 
+  // Prefer Brewtl admin; also re-point any legacy admin email if present.
+  const legacyAdmin = await prisma.user.findUnique({ where: { email: "admin@DelhiDarbar.com" } });
+  if (legacyAdmin) {
+    const brewtlAdmin = await prisma.user.findUnique({ where: { email: "admin@brewtl.com" } });
+    if (!brewtlAdmin) {
+      await prisma.user.update({
+        where: { id: legacyAdmin.id },
+        data: {
+          email: "admin@brewtl.com",
+          restaurantId: brand.id,
+          active: true,
+          passwordHash,
+        },
+      });
+    }
+  }
+
   await prisma.user.upsert({
     where: { email: "admin@brewtl.com" },
-    update: { restaurantId: brewtl.id, active: true },
+    update: { restaurantId: brand.id, active: true, passwordHash },
     create: {
       email: "admin@brewtl.com",
       passwordHash,
       name: "Admin",
-      restaurantId: brewtl.id,
+      role: "ADMIN",
+      restaurantId: brand.id,
     },
   });
 
   // 12 tables (demo highlights table 12)
-  for (let n = 1; n <= BREWTL_TABLES; n++) {
+  for (let n = 1; n <= BRAND_TABLES; n++) {
     const existing = await prisma.table.findFirst({
-      where: { restaurantId: brewtl.id, tableNumber: n },
+      where: { restaurantId: brand.id, tableNumber: n },
       select: { id: true },
     });
     if (existing) {
@@ -68,7 +108,7 @@ async function main() {
     }
     await prisma.table.create({
       data: {
-        restaurantId: brewtl.id,
+        restaurantId: brand.id,
         tableNumber: n,
         uniqueCode: `brewtl-t${n}-${Math.random().toString(36).slice(2, 8)}`,
         active: true,
@@ -78,7 +118,7 @@ async function main() {
 
   const categories = [
     {
-      name: "Starters",
+      name: "Chicken",
       items: [
         {
           name: "Garlic Bread",
@@ -98,7 +138,7 @@ async function main() {
       ],
     },
     {
-      name: "Pizza",
+      name: "Beef",
       items: [
         {
           name: "Margherita Pizza",
@@ -142,7 +182,7 @@ async function main() {
       ],
     },
     {
-      name: "Burgers",
+      name: "Karahi / Handi",
       items: [
         {
           name: "Classic Burger",
@@ -177,7 +217,7 @@ async function main() {
       ],
     },
     {
-      name: "Pasta",
+      name: "Platters",
       items: [
         {
           name: "Creamy Alfredo Pasta",
@@ -200,10 +240,26 @@ async function main() {
           imageUrl:
             "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=600&h=400&fit=crop",
         },
+        {
+          name: "Chocolate Lava Cake",
+          description: "Warm chocolate cake with molten center",
+          price: 650,
+          imageUrl:
+            "https://images.unsplash.com/photo-1624353365286-3f8d62daad51?w=600&h=400&fit=crop",
+          todaySpecial: true,
+        },
+        {
+          name: "Tiramisu",
+          description: "Classic Italian dessert",
+          price: 750,
+          imageUrl:
+            "https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=600&h=400&fit=crop",
+          popular: true,
+        },
       ],
     },
     {
-      name: "Main Course",
+      name: "Tandoor",
       items: [
         {
           name: "Grilled Steak",
@@ -233,7 +289,7 @@ async function main() {
       ],
     },
     {
-      name: "Drinks",
+      name: "Beverages",
       items: [
         {
           name: "Coke",
@@ -251,39 +307,87 @@ async function main() {
         },
       ],
     },
-    {
-      name: "Desserts",
-      items: [
-        {
-          name: "Chocolate Lava Cake",
-          description: "Warm chocolate cake with molten center",
-          price: 650,
-          imageUrl:
-            "https://images.unsplash.com/photo-1624353365286-3f8d62daad51?w=600&h=400&fit=crop",
-          todaySpecial: true,
-        },
-        {
-          name: "Tiramisu",
-          description: "Classic Italian dessert",
-          price: 750,
-          imageUrl:
-            "https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=600&h=400&fit=crop",
-          popular: true,
-        },
-      ],
-    },
   ];
 
   const existingCategories = await prisma.menuCategory.count({
-    where: { restaurantId: brewtl.id },
+    where: { restaurantId: brand.id },
   });
+
+  const requestedMenu = [
+    {
+      name: "Chicken Karahi",
+      items: [
+        "Chicken Peshawari Karahi",
+        "Chicken Shinwari Karahi",
+        "Chicken Brown Karahi",
+        "Chicken Balochi Karahi",
+        "Chicken White Karahi",
+      ],
+    },
+    {
+      name: "Handi",
+      items: ["Chicken Mughlai Handi", "Chicken Paneer Reshmi"],
+    },
+    { name: "Tandoor", items: ["Farmaishi Chapati", "Paratha"] },
+    {
+      name: "Chicken Biryani",
+      items: [
+        "Chicken Biryani (Single)",
+        "Chicken Biryani (Double)",
+        "Tikka Biryani (Single)",
+        "Tikka Biryani (Double)",
+        "Sada Biryani",
+      ],
+    },
+    {
+      name: "Chicken Kabab",
+      items: ["Chicken Turkish Kabab", "Chicken Gola Kabab", "Chicken Reshmi Kabab"],
+    },
+    {
+      name: "Chicken B.B.Q",
+      items: [
+        "Chicken Tikka (Leg)",
+        "Chicken Tikka (Chest)",
+        "Behari Tikka (Leg)",
+        "Behari Tikka (Chest)",
+        "Malai Tikka (Leg)",
+        "Malai Tikka (Chest)",
+        "Special Boti",
+        "Chicken Boti",
+        "Chicken Behari Boti",
+        "Chicken Malai Boti",
+        "Chicken Afghani Boti",
+      ],
+    },
+    {
+      name: "Chicken Rolls",
+      items: ["Chicken Chatni Roll", "Chicken Bihari Roll", "Chicken Malai Roll", "Chicken Kabab Roll"],
+    },
+    {
+      name: "Beef Biryani",
+      items: [
+        "Beef Biryani (Single)",
+        "Beef Biryani (Double)",
+        "Beef White Biryani (Single)",
+        "Beef White Biryani (Double)",
+      ],
+    },
+    {
+      name: "Beef Kabab",
+      items: ["Beef Seekh Kabab", "Beef Behari Kabab", "Beef Gola Kabab"],
+    },
+    { name: "Beef B.B.Q", items: ["Beef Boti", "Beef Behari Boti", "Beef Afghani Boti"] },
+    { name: "Beef Roll", items: ["Beef Chatni Roll", "Beef Bihari Roll", "Beef Kabab Roll"] },
+    { name: "Beef Fry Kabab", items: ["Beef Fry Kabab"] },
+    { name: "Beverages & Sides", items: ["Can", "Small Water", "Large Water", "Raita", "Salad"] },
+  ];
 
   if (existingCategories === 0) {
     let sort = 0;
     for (const cat of categories) {
       const category = await prisma.menuCategory.create({
         data: {
-          restaurantId: brewtl.id,
+          restaurantId: brand.id,
           name: cat.name,
           sortOrder: sort++,
         },
@@ -291,7 +395,7 @@ async function main() {
       for (const item of cat.items) {
         await prisma.menuItem.create({
           data: {
-            restaurantId: brewtl.id,
+            restaurantId: brand.id,
             categoryId: category.id,
             name: item.name,
             description: item.description,
@@ -306,10 +410,27 @@ async function main() {
         });
       }
     }
-    console.log(`Inserted ${categories.length} menu categories for BREWTL.`);
+    console.log(`Inserted ${categories.length} menu categories for Brewtl.`);
   } else {
-    console.log(`BREWTL already has ${existingCategories} menu categories — left untouched.`);
+    console.log(`Brewtl already has ${existingCategories} menu categories — left untouched.`);
   }
+
+  await prisma.menuCategory.deleteMany({ where: { restaurantId: brand.id } });
+  for (const [sortOrder, categoryData] of requestedMenu.entries()) {
+    const category = await prisma.menuCategory.create({
+      data: { restaurantId: brand.id, name: categoryData.name, sortOrder },
+    });
+    await prisma.menuItem.createMany({
+      data: categoryData.items.map((name) => ({
+        restaurantId: brand.id,
+        categoryId: category.id,
+        name,
+        price: 0,
+        available: true,
+      })),
+    });
+  }
+  console.log(`Replaced Brewtl menu with ${requestedMenu.length} categories.`);
 
   // Keep a second restaurant for isolation testing
   const pizza = await prisma.restaurant.upsert({
@@ -327,7 +448,7 @@ async function main() {
   });
   await prisma.user.upsert({
     where: { email: "staff@pizzapalace.com" },
-    update: { restaurantId: pizza.id, active: true },
+    update: { restaurantId: pizza.id, active: true, passwordHash },
     create: {
       email: "staff@pizzapalace.com",
       passwordHash,

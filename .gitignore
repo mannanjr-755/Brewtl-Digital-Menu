@@ -57,3 +57,7 @@ backend/next-env.d.ts
 
 # transcript extracts
 .transcript-extract/
+
+# local helpers
+verify-db.js
+

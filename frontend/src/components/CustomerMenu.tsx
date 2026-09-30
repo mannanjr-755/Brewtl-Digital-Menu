@@ -20,8 +20,7 @@ import { TABLE_GEOFENCE_RADIUS_M } from "@/lib/geofence";
 import { useTableGeofence } from "@/hooks/useTableGeofence";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
-const FEEDBACK_URL =
-  "https://www.google.com/search?q=BREWTL&rlz=1C1GCEA_en-GBPK1168PK1168&oq=BREWTL&gs_lcrp=EgZjaHJvbWUqDAgAEEUYOxjjAhiABDIMCAAQRRg7GOMCGIAEMg0IARAuGK8BGMcBGIAEMgcIAhAAGIAEMg8IAxAuGAoYrwEYxwEYgAQyBwgEEAAYgAQyBggFEEUYPTIGCAYQRRg9MgYIBxBFGD3SAQc1NjlqMGo3qAIAsAIA&sourceid=chrome&source=chrome.ob&ie=UTF-8#lrd=0x3eb33d4bb8141db3:0x356634dad65bb0d,3,,,,"
+const FEEDBACK_URL = "https://www.google.com/search?q=Brewtl";
 type ActiveOrderItem = {
   id: string;
   menuItemId: string | null;
@@ -104,13 +103,19 @@ type RestaurantInfo = {
 
 const CATEGORY_ICON: Record<string, string> = {
   All: "✦",
-  Starters: "🥗",
-  Pizza: "🍕",
-  Burgers: "🍔",
-  Pasta: "🍝",
-  "Main Course": "🥩",
-  Drinks: "🥤",
-  Desserts: "🍰",
+  "Chicken Karahi": "🍗",
+  Handi: "🍲",
+  Tandoor: "🫓",
+  "Chicken Biryani": "🍚",
+  "Chicken Kabab": "🍢",
+  "Chicken B.B.Q": "🔥",
+  "Chicken Rolls": "🌯",
+  "Beef Biryani": "🍚",
+  "Beef Kabab": "🍢",
+  "Beef B.B.Q": "🔥",
+  "Beef Roll": "🌯",
+  "Beef Fry Kabab": "🍢",
+  "Beverages & Sides": "🥤",
 };
 
 export function CustomerMenu({
@@ -571,7 +576,7 @@ export function CustomerMenu({
           <div className="flex flex-col items-center text-center">
             <Image
               src="/logo.png"
-              alt="BREWTL"
+              alt="Brewtl"
               width={96}
               height={96}
               className="h-20 w-20 rounded-full object-cover shadow-[var(--shadow)]"
@@ -676,7 +681,7 @@ export function CustomerMenu({
           <div className="flex items-center gap-2">
             <Image
               src="/logo.png"
-              alt="BREWTL"
+              alt="Brewtl"
               width={40}
               height={40}
               className="h-10 w-10 rounded-full object-cover"
@@ -937,7 +942,7 @@ export function CustomerMenu({
                 {isEditMode ? "Edit Order" : "Checkout"}
               </h2>
               <p className="text-sm text-[var(--text-muted)]">
-                BREWTL · Table {tableNumber}
+                {restaurant.name} · Table {tableNumber}
               </p>
               {isEditMode && (
                 <p className="mt-1 text-xs text-[var(--gold)]">

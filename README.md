@@ -1,18 +1,18 @@
-# BREWTL — Restaurant Ordering
+# Brewtl — Digital Menu
 
 Premium dark/gold digital menu + kitchen dashboard.
 
 ## Project structure
 
 ```
-restaurantorder/
+Brewtl-Menu/
 ├── frontend/     # Next.js app (UI + `/api/*` route handlers)
 ├── backend/      # Prisma schema, seed, and server libraries
 ├── package.json  # Root scripts — `npm run dev` starts the app
-└── .env          # Shared environment config
+└── .env          # Shared environment config (not committed)
 ```
 
-Production is a **single Vercel project** (`nfc-digital-menu`) with one public URL. The API is served from the same Next.js deployment at `/api/*`.
+Production is a **single Vercel project** (`brewtldigital-menu`) with one public URL — https://brewtldigital-menu.vercel.app. The API is served from the same Next.js deployment at `/api/*`.
 
 ## Quick start
 
@@ -36,6 +36,6 @@ This starts the full app at http://localhost:3000 (customer menu, admin UI, and 
 
 ## Brand
 
-- Restaurant: **BREWTL**
+- Restaurant: **Brewtl** (slug `brewtl`)
 - Theme: black background, gold accents, Playfair + DM Sans
 - Currency: Rs.
